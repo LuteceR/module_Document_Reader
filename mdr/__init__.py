@@ -24,6 +24,11 @@ nlp = spacy.load("ru_core_news_lg")
 
 class mdr:
     def __init__(self):
+        
+        """
+        Создание объекта Module Document Reader
+        """
+
         self.path = ""
         self.nlp = None
         self.names_ = []
@@ -32,6 +37,9 @@ class mdr:
         self.text_ = ""
         self.tables_ = []
         self.cpus = os.cpu_count()
+
+        self.students_ = []
+        self.teachers_ = []
 
         try:
             self.nlp = spacy.load("ru_core_news_lg")
@@ -46,7 +54,8 @@ class mdr:
 
     def read_document(self, path_: str):
         """
-        добавление и считывания файла .docx формата
+        добавление и считывания файла .docx формата\n
+        * path_ - путь к файлу .docx
         """
         if '/' not in path_:
             self.path = f"{pathlib.Path(__file__).parent.resolve()}{self.path}"
@@ -81,10 +90,15 @@ class mdr:
             print("ERROR: Не удалось найти файл!")
 
         # генерация паттернов
-        # patterns = [
-        #     [{"LOWER": f"{e}"} for e in STUDENTS_IDENTIFICATIONS_WORDS]
-        # ]
-        # print(patterns)
+        patterns_t = [
+            [{"LOWER": f"{e}"} for e in STUDENTS_IDENTIFICATIONS_WORDS]
+        ]
+
+        patterns_s = [
+            [{"LOWER": f"{e}"} for e in TEACHERS_IDENTIFICATIONS_WORDS]
+        ]
+
+        print(patterns_t, patterns_s)
 
     def get_cpus(self):
         """
@@ -95,7 +109,11 @@ class mdr:
     def set_cpus(self, num: int):
         """
         установление количество процессоров, на которое будет распараллелен поиск ФИО студентов и преподавателей
+        * num - количество процессоров для распараллеливания через mpire
         """
+        if num <= 0 or num > os.cpu_count():
+            print("Некорректное количество процессоров")
+            return
         self.cpus = num
 
     def get_doc_name(self):
@@ -104,9 +122,10 @@ class mdr:
         """
         return self.path.split('/')[-1]
     
-    def set_n(self, n):
+    def set_n(self, n: int):
         """
-        n - количество найденных НЛП ФИО с начала документа и конца, которые берутся на дальнейшую обработку
+        Установление количества ФИО спанов, которые будут добавляться с конца и начала документа .docx
+        * n - количество найденных spaCy НЛП ФИО с начала документа и конца, которые берутся на дальнейшую обработку
         """
 
         self.n = n
