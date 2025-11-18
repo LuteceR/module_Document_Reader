@@ -3,6 +3,8 @@ import docx
 import pathlib
 import mpire
 import os
+from mdr.config.students_keyWords import STUDENTS_IDENTIFICATIONS_WORDS
+from mdr.config.teachers_keyWords import TEACHERS_IDENTIFICATIONS_WORDS
 # import typing
 
 nlp = spacy.load("ru_core_news_lg")
@@ -78,6 +80,12 @@ class mdr:
         except:
             print("ERROR: Не удалось найти файл!")
 
+        # генерация паттернов
+        # patterns = [
+        #     [{"LOWER": f"{e}"} for e in STUDENTS_IDENTIFICATIONS_WORDS]
+        # ]
+        # print(patterns)
+
     def get_cpus(self):
         """
         получения количество процессоров, на которое будет распараллелен поиск ФИО студентов и преподавателей
@@ -142,4 +150,4 @@ class mdr:
 
 
         print(f"Удалось обнаружить {self.names_.__len__()} предположительных имён в тексте и {self.names_tables_.__len__()}")
-        print(self.names_)
+        # print(self.names_)

@@ -1,5 +1,5 @@
 from mdr import mdr
-from mdr import lookingup
+# from mdr import lookingup
 
 mdr_ = mdr()
 
@@ -8,4 +8,4 @@ mdr_.read_document('tests/BKP_АндреевДА_02.03.03_МОАИС_2023.docx')
 # print(mdr_.extract_names())
 # mdr_.extract_names()
 
-lookingup()
+# lookingup()
