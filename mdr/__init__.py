@@ -2,6 +2,7 @@ import spacy
 import docx
 import pathlib
 import mpire
+import os
 # import typing
 
 nlp = spacy.load("ru_core_news_lg")
@@ -10,15 +11,25 @@ nlp = spacy.load("ru_core_news_lg")
 #     doc = nlp(text)
 #     return [ent.text for ent in doc.ents if ent.label_ == "PER"]
 
+# def lookingup(parallel: bool, array: list):
+#     """
+#     поиск статуса ФИО\n
+#     parallel[bool] - распараллеливание поиска\n
+#     array[list] - лист с нормализованным текстом\n
+#     id_fio[int] - id расположения фио 
+#     """
+#     if not parallel:
 
 class mdr:
     def __init__(self):
         self.path = ""
         self.nlp = None
-        self.names_ = [] 
+        self.names_ = []
+        names_tables_ = [] 
         self.n = 10
         self.text_ = ""
         self.tables_ = []
+        self.cpus = os.cpu_count()
 
         try:
             self.nlp = spacy.load("ru_core_news_lg")
@@ -51,37 +62,33 @@ class mdr:
             self.text_ = '\n'.join(fullText)
             
             # чтение таблиц
-            # for table in doc.tables:
-            #     for row in table.rows:
-            #         row_ = []
-            #         for cell in row.cells:
-            #             for p in cell.paragraphs:
-            #                 row_.append(p)
+            for table in doc.tables:
+                table_ = []
+                for row in table.rows:
+                    row_ = []
+                    for cell in row.cells:
+                        for p in cell.paragraphs:
+                            row_.append(p.text)
                     
-            #         row_ = '\n'.join(row_)
-            #         self.tables_.append(row_)
-            
+                    row_ = ' '.join(row_)
+                    table_.append(row_)
+                self.tables_.append(table_)
             # print(self.tables_)
-                                                
-
-
+                      
         except:
             print("ERROR: Не удалось найти файл!")
 
-        # чтение таблиц
-        for table in doc.tables:
-            table_ = []
-            for row in table.rows:
-                row_ = []
-                for cell in row.cells:
-                    for p in cell.paragraphs:
-                        row_.append(p.text)
-                
-                row_ = ' '.join(row_)
-                table_.append(row_)
-            self.tables_.append(table_)
-        
-        print(self.tables_)
+    def get_cpus(self):
+        """
+        получения количество процессоров, на которое будет распараллелен поиск ФИО студентов и преподавателей
+        """
+        return self.cpus
+
+    def set_cpus(self, num: int):
+        """
+        установление количество процессоров, на которое будет распараллелен поиск ФИО студентов и преподавателей
+        """
+        self.cpus = num
 
     def get_doc_name(self):
         """
@@ -113,29 +120,26 @@ class mdr:
         # берём только первые 10 найденных имён, дальше - мусор
 
         # проверка на то, чтобы n всегда было в range для doc.ents.count 
-        # if self.n > doc.ents.__len__():
-        #     self.n = doc.ents.__len__()
-        #     print(f"doc.ents.__len__() = {doc.ents.__len__()}")
+        if self.n > doc.ents.__len__():
+            self.n = doc.ents.__len__()
+            print(f"doc.ents.__len__() = {doc.ents.__len__()}")
 
-        # for i in range(self.n):
-        #     if doc.ents[i].label_ == "PER":
-        #         self.names_.append([doc.ents[i].text, [doc.ents[i].start_char, doc.ents[i].end_char]])
-        #     if doc.ents[-i - 1].label == "PER":
-        #         self.names_.append([doc.ents[-i - 1].text, [doc.ents[-i].start_char, doc.ents[-i].end_char]])
-        #         # print(doc.ents[i].text, doc.ents[i].start_char, doc.ents[i].end_char)
-        # print(f"Удалось обнаружить {self.names_.__len__()} предположительных имён")
-        # print(self.names_)
+        # поиск ФИО в тексте
+        for i in range(self.n):
+            if doc.ents[i].label_ == "PER":
+                self.names_.append([doc.ents[i].text, [doc.ents[i].start_char, doc.ents[i].end_char]])
+            if doc.ents[-i - 1].label == "PER":
+                self.names_.append([doc.ents[-i - 1].text, [doc.ents[-i].start_char, doc.ents[-i].end_char]])
         
-        """
-        Поиск преподавателей и студентов
-        """
+        # поиск ФИО в таблицах
+        # for i in range(len(self.tables_)):
+        #     doc_table_ = self.nlp(self.tables_)
 
-        # for el_ in self.names_:
-            
-
-
+        #     for ent in doc_table_.ents:
+        #         if ent.label == "PER":
 
 
 
-# чтение документа
-# def read_document(file_name_: str):
+
+        print(f"Удалось обнаружить {self.names_.__len__()} предположительных имён в тексте и {self.names_tables_.__len__()}")
+        print(self.names_)
