@@ -1,4 +1,5 @@
 import spacy
+from spacy.matcher import Matcher
 import docx
 import pathlib
 import mpire
@@ -32,14 +33,15 @@ class mdr:
         self.path = ""
         self.nlp = None
         self.names_ = []
-        names_tables_ = [] 
+        self.names_tables_ = [] 
+        
+        self.students = []
+        self.teachers = []
+
         self.n = 10
         self.text_ = ""
         self.tables_ = []
         self.cpus = os.cpu_count()
-
-        self.students_ = []
-        self.teachers_ = []
 
         try:
             self.nlp = spacy.load("ru_core_news_lg")
@@ -89,18 +91,7 @@ class mdr:
         except:
             print("ERROR: Не удалось найти файл!")
 
-        # генерация паттернов
-        patterns_t = [
-            [{"LOWER": f"{e}"} for e in STUDENTS_IDENTIFICATIONS_WORDS]
-        ]
-
-        patterns_s = [
-            [{"LOWER": f"{e}"} for e in TEACHERS_IDENTIFICATIONS_WORDS]
-        ]
-
-        print(patterns_t, patterns_s)
-
-    def get_cpus(self):
+    def get_cpus(self) -> int:
         """
         получения количество процессоров, на которое будет распараллелен поиск ФИО студентов и преподавателей
         """
@@ -116,7 +107,7 @@ class mdr:
             return
         self.cpus = num
 
-    def get_doc_name(self):
+    def get_doc_name(self) -> int:
         """
         Получение названия документа .docx
         """
@@ -124,11 +115,79 @@ class mdr:
     
     def set_n(self, n: int):
         """
-        Установление количества ФИО спанов, которые будут добавляться с конца и начала документа .docx
+        Установление количества ФИО спанов, которые будут добавляться с конца и начала документа .docx\n
         **n** - количество найденных spaCy НЛП ФИО с начала документа и конца, которые берутся на дальнейшую обработку
         """
 
         self.n = n
+
+    def search_fio(self, text_: str, st: bool) -> list:
+        
+        """
+        поиск ФИО студентов/преподавателей\n
+        **text_** - строка для поиска\n
+        **st** - поиск студетов
+        """
+
+        pattern = []
+
+        if st:
+            pattern = [
+            {"LEMMA": { "IN": STUDENTS_IDENTIFICATIONS_WORDS}}
+            ] + [
+            {"OP": "*"},
+            {"TEXT": {"REGEX": "^[А-ЯЁа-яё][а-яё-]+$"}}
+        ]
+        else:
+            pattern = [
+            {"LEMMA": { "IN": TEACHERS_IDENTIFICATIONS_WORDS}}
+            ] + [
+            {"OP": "*"},
+            {"TEXT": {"REGEX": "^[А-ЯЁа-яё][а-яё-]+$"}}
+        ]
+
+
+        doc = self.nlp(text_)
+        matcher = Matcher(self.nlp.vocab)
+        matcher.add("full_names_st", [pattern])
+        matches = matcher(doc)
+
+        # print(f"len(matches) = {len(matches)}")
+
+        res_ = []
+        # print(doc.ents.__len__())
+        
+        for match_id, start, end in matches:
+            
+            span = doc[start:end]
+            # print(f"span: {span}")
+
+            res_.append(span)
+        
+        if len(res_) == 0:
+            return
+
+        # print(f"text_: {text_}")
+        # print(f"res1: {res_}")
+
+        for i in range(len(res_) - 2, -1, -1):
+            if res_[i].text in res_[i + 1].text:
+                del res_[i]
+        
+        print(f"res2: {res_}")
+
+        tokens = []
+
+        for span_ in res_:
+            for token in span_:
+                if token.ent_type_ == "PER":
+                    tokens.append(token)
+
+        if len(tokens) < 1:
+            return
+        
+        print(f"tokens: {tokens}\n")
+        return tokens
 
     def extract_names(self):
         
@@ -165,8 +224,75 @@ class mdr:
         #     for ent in doc_table_.ents:
         #         if ent.label == "PER":
 
+        # генерация паттернов
+        patterns_t = [
+            {"LOWER": { "IN": TEACHERS_IDENTIFICATIONS_WORDS}}
+        ]
+
+        patterns_s = [
+            {"LEMMA": { "IN": STUDENTS_IDENTIFICATIONS_WORDS}}
+            ] + [
+            {"OP": "*"},
+            {"TEXT": {"REGEX": "^[А-ЯЁа-яё][а-яё-]+$"}}
+        ]
 
 
+        # поиск работает только для данных из таблиц
+        # print(self.tables_[0])
 
-        print(f"Удалось обнаружить {self.names_.__len__()} предположительных имён в тексте и {self.names_tables_.__len__()}")
+        for i in range(len(self.tables_)):
+
+            text_ = self.tables_[i]
+
+            if isinstance(self.tables_[i], list):
+                for j in range(len(text_)):
+                    for st in [True, False]:
+                        full_name = self.search_fio(text_[j], st)
+
+                        if full_name is not None:
+                            if st:
+                                self.students.append(full_name)
+                            else:
+                                self.teachers.append(full_name)
+
+            else:
+                for st in [True, False]:
+                    full_name = self.search_fio(text_, st)
+
+                    
+                    if full_name is not None:
+                        if st:
+                            self.students.append(full_name)
+                        else:
+                            self.teachers.append(full_name)
+
+        print("Студенты")
+        print(self.students)
+        print("\nПреподаватели")
+        print(self.teachers)
+
+            # doc = self.nlp(self.tables_[i][0])
+            # matcher = Matcher(self.nlp.vocab)
+            # matcher.add("full_names_st", [patterns_s])
+            # matches = matcher(doc)
+
+            # print(f"len(matches) = {len(matches)}")
+
+            # res_ = []
+            # print(doc.ents.__len__())
+            
+            # for match_id, start, end in matches:
+                
+            #     span = doc[start:end]
+            #     print(f"span: {span}")
+
+            #     res_.append(span.text)
+            
+            # for i in range(len(res_) - 2, -1, -1):
+            #     if res_[i] in res_[i + 1]:
+            #         del res_[i]
+
+            # print(res_)
+
+        # print(f"Удалось обнаружить {self.names_.__len__()} предположительных имён в тексте и {self.names_tables_.__len__()} в таблицах")
         # print(self.names_)
